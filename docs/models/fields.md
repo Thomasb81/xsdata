@@ -60,18 +60,37 @@ The namespace name of the XML element or attribute.
 ### `nillable`
 
 Specify if the field has to be present in the serialized result even when it doesn't
-have any meaningful content. If the field is not required the serializer will ignore it.
+have any meaningful content.
 
 ```python
 >>> @dataclass
 ... class Root:
-...     first: None | str = field(metadata={"nillable": True, "required": True}, default=None)
+...     first: None | str = field(metadata={"nillable": True}, default=None)
 ...     second: None | str = field(default=None)
 ...
 >>> print(serializer.render(Root()))
 <Root>
   <first xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
 </Root>
+
+```
+
+**Type:** `bool`
+
+**Default:** `False`
+
+### `required`
+
+Specify if an attribute has to always be present in the serialized result, in all other
+XML Types this attribute is ignored.
+
+```python
+>>> @dataclass
+... class Root:
+...     att: str = field(default="here", metadata={"type": "Attribute", "required": True})
+...
+>>> print(serializer.render(Root()))
+<Root att="here"/>
 
 ```
 
