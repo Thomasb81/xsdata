@@ -255,3 +255,66 @@ class UpdateAttributesEffectiveChoiceTests(FactoryTestCase):
         # Both 'b' elements should retain their original max_occurs=1
         self.assertEqual(1, target.attrs[1].restrictions.max_occurs)
         self.assertEqual(1, target.attrs[2].restrictions.max_occurs)
+
+    def test_process_elements_in_same_choice_same_level(self) -> None:
+        """Test that elements in the same choice at the same nesting level are merged.
+
+        This tests the repeating pattern where an element appears multiple times
+        within the same choice at the same nesting level.
+        Example XSD pattern:
+            <xs:choice maxOccurs="unbounded">
+                <xs:element name="a"/>
+                <xs:element name="b"/>
+                <xs:element name="a"/>
+            </xs:choice>
+        The two 'a' elements are in the same choice at the same level and
+        should be grouped as a repeating element.
+        """
+        choice_id = 12345
+        path = [("c", choice_id, 1, 1)]
+
+        target = ClassFactory.create(
+            attrs=[
+                AttrFactory.element(
+                    name="a",
+                    namespace="ns",
+                    restrictions=Restrictions(
+                        min_occurs=1,
+                        max_occurs=1,
+                        choice=choice_id,
+                        path=path.copy(),
+                    ),
+                ),
+                AttrFactory.element(
+                    name="b",
+                    namespace="ns",
+                    restrictions=Restrictions(
+                        min_occurs=1,
+                        max_occurs=1,
+                        choice=choice_id,
+                        path=path.copy(),
+                    ),
+                ),
+                AttrFactory.element(
+                    name="a",
+                    namespace="ns",
+                    restrictions=Restrictions(
+                        min_occurs=1,
+                        max_occurs=1,
+                        choice=choice_id,
+                        path=path.copy(),
+                    ),
+                ),
+            ]
+        )
+
+        self.processor.process(target)
+
+        # Should merge 'a' elements since they're in the same choice at the same level
+        self.assertEqual(2, len(target.attrs))
+        self.assertEqual(["a", "b"], [x.name for x in target.attrs])
+        # 'a' should have merged occurrences
+        self.assertEqual(2, target.attrs[0].restrictions.min_occurs)
+        self.assertEqual(2, target.attrs[0].restrictions.max_occurs)
+        # 'a' should have a negative choice ID (effective choice marker)
+        self.assertEqual(-1, target.attrs[0].restrictions.choice)
